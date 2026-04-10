@@ -68,11 +68,13 @@ d3.js で Outlook 風の予定表 UI を描画する軽量ライブラリ Calend
   targetDate?: Date | string;
   view?: { type: 'year' | 'month' | 'week' | 'day'; span?: number };
   aroundDays?: number | null;
+  monthColumns?: number;     // month表示の1行あたり日数（既定 7）
   weekStartsOn?: number;      // 0:日曜 ~ 6:土曜
   dayStartHour?: number;      // 既定 0
   dayEndHour?: number;        // 既定 24
   timelineStepMinutes?: number; // 既定 15
   showHeader?: boolean;
+  locale?: Intl.DateTimeFormatOptions; // 既定: { day, month, year }
   events?: Array<{
     id?: string;
     title?: string;
