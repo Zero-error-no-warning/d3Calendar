@@ -126,46 +126,155 @@ export class Calend3r {
     const date = toDate(dateLike);
     if (Number.isNaN(date.getTime())) return null;
     const dayIndex = diffDays(startOfDay(date), startOfDay(meta.range.start));
-    if (dayIndex < 0) return null;
+    const totalDays = diffDays(startOfDay(meta.range.end), startOfDay(meta.range.start)) + 1;
+    if (dayIndex < 0 || dayIndex >= totalDays) return null;
     if (meta.isTimeline) {
       const visibleMinutes = (meta.cfg.dayEndHour - meta.cfg.dayStartHour) * 60;
       const minuteOfDay = date.getHours() * 60 + date.getMinutes();
-      return {
+      const result = {
         viewType: meta.cfg.view.type,
         dayIndex,
         minuteOfDay,
         yRatio: (minuteOfDay - meta.cfg.dayStartHour * 60) / visibleMinutes,
         note: 'timeline view: x position is not used'
       };
+      const coords = this._timelinePointToCoordinates(dayIndex, minuteOfDay, visibleMinutes, meta);
+      return coords ? { ...result, ...coords } : result;
     }
-    return {
+    const result = {
       viewType: meta.cfg.view.type,
       dayIndex,
       date: toDateKey(date),
       note: 'date/year grid view: time fields are ignored'
     };
+    const coords = this._dateCellToCoordinates(result.date);
+    return coords ? { ...result, ...coords } : result;
   }
 
   viewPositionToDate(position = {}) {
     const meta = this._lastRenderMeta || { cfg: this.options, range: buildVisibleRange(this.options), isTimeline: false };
     const dayIndex = Number(position.dayIndex);
-    if (!Number.isFinite(dayIndex)) return null;
-    const day = addDays(startOfDay(meta.range.start), Math.trunc(dayIndex));
-    if (meta.isTimeline) {
-      const visibleMinutes = (meta.cfg.dayEndHour - meta.cfg.dayStartHour) * 60;
-      let minuteOfDay = Number(position.minuteOfDay);
-      if (!Number.isFinite(minuteOfDay) && Number.isFinite(position.yRatio)) {
-        minuteOfDay = meta.cfg.dayStartHour * 60 + (Number(position.yRatio) * visibleMinutes);
+    if (Number.isFinite(dayIndex)) {
+      const day = addDays(startOfDay(meta.range.start), Math.trunc(dayIndex));
+      if (meta.isTimeline) {
+        const visibleMinutes = (meta.cfg.dayEndHour - meta.cfg.dayStartHour) * 60;
+        let minuteOfDay = Number(position.minuteOfDay);
+        if (!Number.isFinite(minuteOfDay) && Number.isFinite(position.yRatio)) {
+          minuteOfDay = meta.cfg.dayStartHour * 60 + (Number(position.yRatio) * visibleMinutes);
+        }
+        if (!Number.isFinite(minuteOfDay)) minuteOfDay = meta.cfg.dayStartHour * 60;
+        return timelinePositionToDate(day, minuteOfDay, meta.cfg.timelineStepMinutes);
       }
-      if (!Number.isFinite(minuteOfDay)) minuteOfDay = meta.cfg.dayStartHour * 60;
-      const snapped = Math.round(minuteOfDay / meta.cfg.timelineStepMinutes) * meta.cfg.timelineStepMinutes;
-      const dayDelta = Math.floor(snapped / 1440);
-      const normalizedMinute = ((snapped % 1440) + 1440) % 1440;
-      const result = addDays(day, dayDelta);
-      result.setHours(Math.floor(normalizedMinute / 60), normalizedMinute % 60, 0, 0);
-      return result;
+      return day;
     }
-    return day;
+
+    const clientPos = this._resolveClientPosition(position);
+    if (!clientPos) return null;
+
+    if (meta.isTimeline) {
+      const timelinePos = this._resolveTimelinePositionFromClient(clientPos, meta);
+      if (!timelinePos) return null;
+      return timelinePositionToDate(timelinePos.day, timelinePos.minuteOfDay, meta.cfg.timelineStepMinutes);
+    }
+
+    const dateCell = this._resolveDateCellFromClient(clientPos);
+    if (!dateCell) return null;
+    return startOfDay(dateCell);
+  }
+
+  _resolveClientPosition(position = {}) {
+    const clientX = Number(position.clientX);
+    const clientY = Number(position.clientY);
+    if (Number.isFinite(clientX) && Number.isFinite(clientY)) {
+      return { clientX, clientY };
+    }
+
+    const x = Number(position.x);
+    const y = Number(position.y);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+
+    const root = this.select('calendar').node();
+    if (!root || !root.getBoundingClientRect) return null;
+    const rect = root.getBoundingClientRect();
+    return {
+      clientX: rect.left + x,
+      clientY: rect.top + y
+    };
+  }
+
+  _timelinePointToCoordinates(dayIndex, minuteOfDay, visibleMinutes, meta) {
+    const canvasNode = this.container.select('.d3oc-timeline-canvas').node();
+    const firstCell = this.container.select('.d3oc-time-cell').node();
+    const root = this.select('calendar').node();
+    if (!canvasNode || !firstCell || !root) return null;
+    const canvasRect = canvasNode.getBoundingClientRect();
+    const firstCellRect = firstCell.getBoundingClientRect();
+    const rootRect = root.getBoundingClientRect();
+    const days = Math.max(diffDays(startOfDay(meta.range.end), startOfDay(meta.range.start)) + 1, 1);
+    const gridLeft = firstCellRect.left;
+    const gridWidth = Math.max(canvasRect.right - gridLeft, 1);
+    const xRatio = (dayIndex + 0.5) / days;
+    const yRatio = (minuteOfDay - meta.cfg.dayStartHour * 60) / visibleMinutes;
+    const clampedY = Math.min(Math.max(yRatio, 0), 1);
+    const clientX = gridLeft + (xRatio * gridWidth);
+    const clientY = canvasRect.top + (clampedY * canvasRect.height);
+    return {
+      x: clientX - rootRect.left,
+      y: clientY - rootRect.top,
+      clientX,
+      clientY
+    };
+  }
+
+  _dateCellToCoordinates(dateKey) {
+    const cell = this.container.select(`[data-cal-kind='dateGrid'][data-date-key='${dateKey}']`).node();
+    const root = this.select('calendar').node();
+    if (!cell || !root) return null;
+    const rect = cell.getBoundingClientRect();
+    const rootRect = root.getBoundingClientRect();
+    const clientX = rect.left + (rect.width / 2);
+    const clientY = rect.top + (rect.height / 2);
+    return {
+      x: clientX - rootRect.left,
+      y: clientY - rootRect.top,
+      clientX,
+      clientY
+    };
+  }
+
+  _resolveTimelinePositionFromClient(clientPos, meta) {
+    const canvasNode = this.container.select('.d3oc-timeline-canvas').node();
+    const firstCell = this.container.select('.d3oc-time-cell').node();
+    if (!canvasNode || !firstCell) return null;
+    const canvasRect = canvasNode.getBoundingClientRect();
+    const firstCellRect = firstCell.getBoundingClientRect();
+    if (!canvasRect.height) return null;
+    const gridLeft = firstCellRect.left;
+    const gridRight = canvasRect.right;
+    if (clientPos.clientX < gridLeft || clientPos.clientX > gridRight || clientPos.clientY < canvasRect.top || clientPos.clientY > canvasRect.bottom) {
+      return null;
+    }
+    const days = Math.max(diffDays(startOfDay(meta.range.end), startOfDay(meta.range.start)) + 1, 1);
+    const xRatio = Math.min(Math.max((clientPos.clientX - gridLeft) / Math.max(gridRight - gridLeft, 1), 0), 0.999999);
+    const dayIndex = Math.floor(xRatio * days);
+    const visibleMinutes = (meta.cfg.dayEndHour - meta.cfg.dayStartHour) * 60;
+    const yRatio = Math.min(Math.max((clientPos.clientY - canvasRect.top) / canvasRect.height, 0), 1);
+    const minuteOfDay = meta.cfg.dayStartHour * 60 + (yRatio * visibleMinutes);
+    const day = addDays(startOfDay(meta.range.start), dayIndex);
+    return { day, minuteOfDay };
+  }
+
+  _resolveDateCellFromClient(clientPos) {
+    if (typeof document === 'undefined' || !document.elementFromPoint) return null;
+    const node = document.elementFromPoint(clientPos.clientX, clientPos.clientY);
+    if (!node || !node.closest) return null;
+    const cell = node.closest("[data-cal-kind='dateGrid']");
+    if (!cell || !cell.dataset) return null;
+    const key = cell.dataset.dateKey || cell.dataset.date;
+    if (!key) return null;
+    const parsed = toDate(`${key}T00:00:00`);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return parsed;
   }
 
   _renderDateGrid(body, range, cfg) {
@@ -618,7 +727,12 @@ function pointerToTimelineDate(day, clientY, canvasNode, cfg, visibleMinutes) {
   if (!rect.height) return null;
   const relativeY = clientY - rect.top;
   const absoluteMinutes = cfg.dayStartHour * 60 + (relativeY / rect.height) * visibleMinutes;
-  const snapped = Math.round(absoluteMinutes / cfg.timelineStepMinutes) * cfg.timelineStepMinutes;
+  return timelinePositionToDate(day, absoluteMinutes, cfg.timelineStepMinutes);
+}
+
+function timelinePositionToDate(day, minuteOfDay, timelineStepMinutes) {
+  const step = Math.max(Number(timelineStepMinutes) || 1, 1);
+  const snapped = Math.round(minuteOfDay / step) * step;
   const dayDelta = Math.floor(snapped / 1440);
   const normalizedMinute = ((snapped % 1440) + 1440) % 1440;
   const result = addDays(startOfDay(day), dayDelta);
