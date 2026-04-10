@@ -152,6 +152,7 @@ export class Calend3r {
   _renderTimeline(body, range, cfg) {
     const days = eachDay(range.start, range.end);
     const times = buildTimelineSlots(cfg.dayStartHour, cfg.dayEndHour, cfg.timelineStepMinutes);
+    const visibleMinutes = (cfg.dayEndHour - cfg.dayStartHour) * 60;
 
     const wrap = body.append('div')
       .attr('class', 'd3oc-timeline-wrap')
@@ -166,7 +167,9 @@ export class Calend3r {
       .attr('class', 'd3oc-day-col-label')
       .text(d => formatDateLabel(d, cfg));
 
-    const rows = wrap.selectAll('div.d3oc-time-row')
+    const canvas = wrap.append('div').attr('class', 'd3oc-timeline-canvas');
+
+    const rows = canvas.selectAll('div.d3oc-time-row')
       .data(times)
       .enter()
       .append('div')
@@ -203,24 +206,21 @@ export class Calend3r {
       timelineCells.set(`${cellDate.toISOString()}#${minutes}`, cell);
     });
 
-    const renderedEventNodes = [];
-    events.forEach(evt => {
-      const clippedStart = clipToVisibleTime(evt.start, range, cfg);
-      if (!clippedStart) return;
-      const slotMinutes = floorToStep(clippedStart.getHours() * 60 + clippedStart.getMinutes(), step);
-      const cellKey = `${startOfDay(clippedStart).toISOString()}#${slotMinutes}`;
-      const hostCell = timelineCells.get(cellKey);
-      if (!hostCell) return;
-
-      const node = hostCell.append('div')
-        .datum(evt)
-        .attr('class', 'd3oc-event')
-        .attr('data-cal-kind', 'event')
-        .text(`${evt.title || '(untitled)'} (${timeHM(evt.start)}-${timeHM(evt.end)})`);
-      renderedEventNodes.push(node);
-    });
-
-    const eventNodes = d3.selectAll(renderedEventNodes.map(node => node.node()));
+    const segments = buildTimelineEventSegments(events, days, cfg);
+    const dayWidthExpr = `(100% - 80px) / ${Math.max(days.length, 1)}`;
+    const eventsLayer = canvas.append('div').attr('class', 'd3oc-events-layer');
+    const eventNodes = eventsLayer.selectAll('div.d3oc-timeline-event')
+      .data(segments)
+      .enter()
+      .append('div')
+      .attr('class', 'd3oc-event d3oc-timeline-event')
+      .attr('data-cal-kind', 'event')
+      .style('left', d => `calc(80px + (${d.dayIndex} * (${dayWidthExpr})) + 2px)`)
+      .style('width', `calc(${dayWidthExpr} - 4px)`)
+      .style('top', d => `${(d.startMinute / visibleMinutes) * 100}%`)
+      .style('height', d => `${Math.max(((d.endMinute - d.startMinute) / visibleMinutes) * 100, 2)}%`)
+      .text(d => `${d.event.title || '(untitled)'} (${timeHM(d.event.start)}-${timeHM(d.event.end)})`)
+      .datum(d => d.event);
 
     applyListeners(eventNodes, this.listeners.event, evt => ({ event: evt }));
   }
@@ -436,20 +436,27 @@ function timeHM(d) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-function floorToStep(minutes, step) {
-  return Math.floor(minutes / step) * step;
-}
-
-function clipToVisibleTime(dateTime, range, cfg) {
-  const day = startOfDay(dateTime);
-  if (day < startOfDay(range.start) || day > startOfDay(range.end)) {
-    return null;
-  }
-  const mins = dateTime.getHours() * 60 + dateTime.getMinutes();
+function buildTimelineEventSegments(events, days, cfg) {
+  const segments = [];
   const visibleStart = cfg.dayStartHour * 60;
   const visibleEnd = cfg.dayEndHour * 60;
-  const clippedMinutes = Math.max(visibleStart, Math.min(mins, visibleEnd - 1));
-  const clipped = new Date(day);
-  clipped.setHours(Math.floor(clippedMinutes / 60), clippedMinutes % 60, 0, 0);
-  return clipped;
+
+  days.forEach((day, dayIndex) => {
+    const dayStart = new Date(day);
+    dayStart.setHours(cfg.dayStartHour, 0, 0, 0);
+    const dayEnd = new Date(day);
+    dayEnd.setHours(cfg.dayEndHour, 0, 0, 0);
+
+    events.forEach(event => {
+      const segStart = new Date(Math.max(event.start.getTime(), dayStart.getTime()));
+      const segEnd = new Date(Math.min(event.end.getTime(), dayEnd.getTime()));
+      if (segEnd <= segStart) return;
+
+      const startMinute = Math.max(visibleStart, segStart.getHours() * 60 + segStart.getMinutes()) - visibleStart;
+      const endMinute = Math.min(visibleEnd, segEnd.getHours() * 60 + segEnd.getMinutes()) - visibleStart;
+      segments.push({ event, dayIndex, startMinute, endMinute });
+    });
+  });
+
+  return segments;
 }
