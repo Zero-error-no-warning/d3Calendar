@@ -117,10 +117,20 @@ python -m http.server 8000
 - `setView(type, span = 1)`
 - `setEvents(events)`
 - `render()`
+- `select(target)`
+- `selectAll(target)`
+- `onRender(handler)`
+- `offRender(handler)`
 - `on(elementType, eventName, handler)`
 - `off(elementType, eventName)`
 - `dateToViewPosition(date)`  // 日時 -> 現在ビュー上の位置情報
 - `viewPositionToDate(position)` // 現在ビュー上の位置情報 -> 日時
+
+`target` は `calendar | dateGrid | timelineGrid | event` を渡すと `data-cal-kind` ベースのセレクタに解決されます。通常の CSS セレクタ文字列も使用できます。
+
+> `on/off` は再描画後もハンドラを維持したい場合の互換 API です。d3 と統一した書き方をしたい場合は `select/selectAll` を使ってください。
+>
+> d3 用プラグイン（例: `d3-context-menu`）を再描画後も維持したい場合は `onRender` で `call(...)` を再適用してください。
 
 ### `dateToViewPosition(date)`
 
@@ -160,6 +170,19 @@ const dt = cal.viewPositionToDate({ dayIndex: 0, minuteOfDay: 10 * 60 + 30 });
 ```
 
 ```js
-const selected = d3.selectAll('.dateGrid')
+const selected = cal.selectAll('dateGrid')
   .filter(d => d.date === '2026-04-10');
+```
+
+任意の CSS セレクタも使えます。
+
+```js
+cal.selectAll('.d3oc-timeline-event').classed('is-highlight', true);
+```
+
+```js
+// 例: d3-context-menu のような Selection ベースのプラグインを併用
+cal.onRender((instance) => {
+  instance.selectAll('event').call(d3.contextMenu(menuItems));
+});
 ```

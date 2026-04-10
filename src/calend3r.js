@@ -35,6 +35,7 @@ export class Calend3r {
       timelineGrid: {},
       event: {}
     };
+    this.renderListeners = new Set();
 
     this._validateOptions();
     this.render();
@@ -67,8 +68,36 @@ export class Calend3r {
   }
 
   /**
+   * selectAll(target)
+   * target:
+   * - kind string: 'calendar' | 'dateGrid' | 'timelineGrid' | 'event'
+   * - any CSS selector string
+   */
+  selectAll(target) {
+    return this.container.selectAll(resolveElementSelector(target));
+  }
+
+  select(target) {
+    return this.container.select(resolveElementSelector(target));
+  }
+
+  onRender(handler) {
+    if (typeof handler !== 'function') {
+      throw new Error('handler must be a function');
+    }
+    this.renderListeners.add(handler);
+    handler(this);
+    return this;
+  }
+
+  offRender(handler) {
+    this.renderListeners.delete(handler);
+    return this;
+  }
+
+  /**
    * on(elementType, eventName, handler)
-   * elementType: 'calendar' | 'dateGrid' | 'timelineGrid' | 'event'
+   * @deprecated Use cal.selectAll(...).on(...) for d3-like API.
    */
   on(elementType, eventName, handler) {
     if (!this.listeners[elementType]) {
@@ -115,6 +144,8 @@ export class Calend3r {
     } else {
       this._renderDateGrid(body, range, cfg);
     }
+
+    this.renderListeners.forEach((handler) => handler(this));
 
     return this;
   }
@@ -389,7 +420,7 @@ export class Calend3r {
   }
 
   _bindExistingNodes(elementType, eventName, handler) {
-    const sel = this.container.selectAll(`[data-cal-kind='${elementType}']`);
+    const sel = this.selectAll(elementType);
     if (!sel.empty()) {
       sel.on(eventName, function (ev, d) {
         handler({
@@ -440,6 +471,16 @@ function resolveSelection(container) {
     return container;
   }
   return d3.select(container);
+}
+
+function resolveElementSelector(target) {
+  if (typeof target !== 'string' || !target) {
+    throw new Error('target must be a non-empty string');
+  }
+  if (target === 'calendar' || target === 'dateGrid' || target === 'timelineGrid' || target === 'event') {
+    return `[data-cal-kind='${target}']`;
+  }
+  return target;
 }
 
 function mergeOptions(base, patch) {
