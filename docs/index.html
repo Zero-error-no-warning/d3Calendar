@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>d3-outlook-calendar Demo</title>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <link rel="stylesheet" href="./assets/d3-outlook-calendar.css" />
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 20px; }
+    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    button { padding: 6px 10px; border: 1px solid #d0d7de; background: #fff; border-radius: 6px; }
+    #calendar { max-width: 1300px; }
+    .note { color: #57606a; font-size: 13px; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <h1>d3-outlook-calendar Demo</h1>
+  <p>GitHub Pages で公開できるデモページです。</p>
+
+  <div class="toolbar">
+    <button data-view="day">1日</button>
+    <button data-view="week">週</button>
+    <button data-view="month">月</button>
+    <button data-view="year">年</button>
+    <button id="span2">span=2</button>
+    <button id="span1">span=1</button>
+    <button id="around3">前後3日</button>
+    <button id="normal">通常</button>
+  </div>
+
+  <div id="calendar"></div>
+  <div class="note">イベントをクリックするとタイトルを表示します。</div>
+
+  <script type="module">
+    import { createD3OutlookCalendar } from './assets/d3-outlook-calendar.js';
+
+    let view = 'week';
+    let span = 1;
+
+    const cal = createD3OutlookCalendar('#calendar', {
+      targetDate: '2026-04-10',
+      view: { type: view, span },
+      timelineStepMinutes: 15,
+      events: [
+        { title: 'Daily standup', start: '2026-04-10T09:30:00', end: '2026-04-10T10:00:00' },
+        { title: 'Design review', start: '2026-04-10T13:00:00', end: '2026-04-10T14:00:00' },
+        { title: 'Planning', start: '2026-04-12T11:00:00', end: '2026-04-12T12:00:00' }
+      ]
+    });
+
+    cal.on('event', 'click', ({ datum }) => {
+      alert(`clicked: ${datum.title}`);
+    });
+
+    document.querySelectorAll('button[data-view]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        view = btn.dataset.view;
+        cal.setOptions({ aroundDays: null });
+        cal.setView(view, span);
+      });
+    });
+
+    document.getElementById('span2').addEventListener('click', () => {
+      span = 2;
+      cal.setView(view, span);
+    });
+
+    document.getElementById('span1').addEventListener('click', () => {
+      span = 1;
+      cal.setView(view, span);
+    });
+
+    document.getElementById('around3').addEventListener('click', () => {
+      cal.setOptions({ aroundDays: 3 });
+    });
+
+    document.getElementById('normal').addEventListener('click', () => {
+      cal.setOptions({ aroundDays: null });
+      cal.setView(view, span);
+    });
+  </script>
+</body>
+</html>
