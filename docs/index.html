@@ -3,19 +3,23 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>d3-outlook-calendar Demo</title>
+  <title>Calend3r Demo</title>
   <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
-  <link rel="stylesheet" href="./assets/d3-outlook-calendar.css" />
+  <link rel="stylesheet" href="./assets/calend3r.css" />
   <style>
     body { font-family: system-ui, sans-serif; margin: 20px; }
     .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
     button { padding: 6px 10px; border: 1px solid #d0d7de; background: #fff; border-radius: 6px; }
-    #calendar { max-width: 1300px; }
+    #calendar {
+      max-width: 1300px;
+      max-height: 520px;
+      overflow: auto;
+    }
     .note { color: #57606a; font-size: 13px; margin-top: 8px; }
   </style>
 </head>
 <body>
-  <h1>d3-outlook-calendar Demo</h1>
+  <h1>Calend3r Demo</h1>
   <p>GitHub Pages で公開できるデモページです。</p>
 
   <div class="toolbar">
@@ -30,28 +34,55 @@
   </div>
 
   <div id="calendar"></div>
-  <div class="note">イベントをクリックするとタイトルを表示します。</div>
+  <div class="note">セルをダブルクリックでイベント作成 / イベントをクリックでタイトル表示。</div>
 
   <script type="module">
-    import { createD3OutlookCalendar } from './assets/d3-outlook-calendar.js';
+    import { createCalend3r } from './assets/calend3r.js';
 
     let view = 'week';
     let span = 1;
 
-    const cal = createD3OutlookCalendar('#calendar', {
+    const initialEvents = [
+      { title: 'Daily standup', start: '2026-04-10T09:30:00', end: '2026-04-10T10:00:00' },
+      { title: 'Design review', start: '2026-04-10T13:00:00', end: '2026-04-10T14:00:00' },
+      { title: 'Planning', start: '2026-04-12T11:00:00', end: '2026-04-12T12:00:00' }
+    ];
+    const events = [...initialEvents];
+
+    const cal = createCalend3r('#calendar', {
       targetDate: '2026-04-10',
       view: { type: view, span },
       timelineStepMinutes: 15,
-      events: [
-        { title: 'Daily standup', start: '2026-04-10T09:30:00', end: '2026-04-10T10:00:00' },
-        { title: 'Design review', start: '2026-04-10T13:00:00', end: '2026-04-10T14:00:00' },
-        { title: 'Planning', start: '2026-04-12T11:00:00', end: '2026-04-12T12:00:00' }
-      ]
+      events
     });
 
     cal.on('event', 'click', ({ datum }) => {
       alert(`clicked: ${datum.title}`);
     });
+
+    cal.on('dateGrid', 'dblclick', ({ datum }) => {
+      addEventOnDate(datum, 9, 60);
+    });
+
+    cal.on('timelineGrid', 'dblclick', ({ day, slot }) => {
+      addEventOnDate(day, Math.floor(slot.minutes / 60), 30, slot.minutes % 60);
+    });
+
+    function addEventOnDate(date, startHour = 9, durationMinutes = 60, startMinute = 0) {
+      const title = prompt('イベント名を入力してください', 'New Event');
+      if (!title) return;
+
+      const start = new Date(date);
+      start.setHours(startHour, startMinute, 0, 0);
+      const end = new Date(start.getTime() + durationMinutes * 60_000);
+
+      events.push({
+        title,
+        start: start.toISOString(),
+        end: end.toISOString()
+      });
+      cal.setEvents(events);
+    }
 
     document.querySelectorAll('button[data-view]').forEach(btn => {
       btn.addEventListener('click', () => {

@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>d3-outlook-calendar basic sample</title>
+  <title>Calend3r basic sample</title>
   <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
-  <link rel="stylesheet" href="../src/d3-outlook-calendar.css" />
+  <link rel="stylesheet" href="../src/calend3r.css" />
   <style>
     body { font-family: sans-serif; margin: 20px; }
     #calendar { max-width: 1200px; }
@@ -14,7 +14,7 @@
   </style>
 </head>
 <body>
-  <h1>d3-outlook-calendar サンプル</h1>
+  <h1>Calend3r サンプル</h1>
 
   <div class="toolbar">
     <button data-view="day">1日表示</button>
@@ -30,7 +30,7 @@
   <div id="calendar"></div>
 
   <script type="module">
-    import { createD3OutlookCalendar } from '../src/d3-outlook-calendar.js';
+    import { createCalend3r } from '../src/calend3r.js';
 
     let target = new Date('2026-04-10T00:00:00');
     let view = 'week';
@@ -43,7 +43,7 @@
       { id: '4', title: '月次会議', start: '2026-04-18T13:00:00', end: '2026-04-18T14:30:00' }
     ];
 
-    const cal = createD3OutlookCalendar('#calendar', {
+    const cal = createCalend3r('#calendar', {
       targetDate: target,
       view: { type: view, span },
       timelineStepMinutes: 15,

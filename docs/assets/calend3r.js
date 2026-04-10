@@ -1,5 +1,5 @@
 /**
- * D3 Outlook-like Calendar
+ * Calend3r
  *
  * Requires d3-selection and d3-time-format (or full d3 bundle) loaded by user.
  */
@@ -24,7 +24,7 @@ const DEFAULT_OPTIONS = {
 
 const VIEW_TYPES = new Set(['year', 'month', 'week', 'day']);
 
-export class D3OutlookCalendar {
+export class Calend3r {
   constructor(container, options = {}) {
     this.container = resolveSelection(container);
     this.options = mergeOptions(DEFAULT_OPTIONS, options);
@@ -93,7 +93,7 @@ export class D3OutlookCalendar {
     const root = this.container
       .html('')
       .append('div')
-      .attr('class', 'd3-outlook-calendar')
+      .attr('class', 'calend3r')
       .attr('data-cal-kind', 'calendar');
 
     applyListeners(root, this.listeners.calendar);
@@ -245,8 +245,8 @@ export class D3OutlookCalendar {
   }
 }
 
-export function createD3OutlookCalendar(container, options = {}) {
-  return new D3OutlookCalendar(container, options);
+export function createCalend3r(container, options = {}) {
+  return new Calend3r(container, options);
 }
 
 function resolveSelection(container) {
