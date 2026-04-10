@@ -28,3 +28,7 @@
 ## 6. 使用例サンプルの粒度
 - 疑義: README に断片コードのみか、実行可能な HTML サンプルまで含めるか。
 - 解消: 実行可能な `examples/basic.html` を追加し、README から起動方法を案内。
+
+## 7. GitHub demo 公開方法
+- 疑義: 手順説明だけでよいか、即公開可能な構成まで含めるか。
+- 解消: `docs/` に公開用デモを追加し、GitHub Pages (GitHub Actions) 用 workflow も追加。
