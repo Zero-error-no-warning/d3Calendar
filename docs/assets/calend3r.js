@@ -29,12 +29,7 @@ export class Calend3r {
   constructor(container, options = {}) {
     this.container = resolveSelection(container);
     this.options = mergeOptions(DEFAULT_OPTIONS, options);
-    this.listeners = {
-      calendar: {},
-      dateGrid: {},
-      timelineGrid: {},
-      event: {}
-    };
+    this.renderListeners = new Set();
 
     this._validateOptions();
     this.render();
@@ -67,23 +62,30 @@ export class Calend3r {
   }
 
   /**
-   * on(elementType, eventName, handler)
-   * elementType: 'calendar' | 'dateGrid' | 'timelineGrid' | 'event'
+   * selectAll(target)
+   * target:
+   * - kind string: 'calendar' | 'dateGrid' | 'timelineGrid' | 'event'
+   * - any CSS selector string
    */
-  on(elementType, eventName, handler) {
-    if (!this.listeners[elementType]) {
-      throw new Error(`Unsupported elementType: ${elementType}`);
+  selectAll(target) {
+    return this.container.selectAll(resolveElementSelector(target));
+  }
+
+  select(target) {
+    return this.container.select(resolveElementSelector(target));
+  }
+
+  onRender(handler) {
+    if (typeof handler !== 'function') {
+      throw new Error('handler must be a function');
     }
-    this.listeners[elementType][eventName] = handler;
-    this._bindExistingNodes(elementType, eventName, handler);
+    this.renderListeners.add(handler);
+    handler(this);
     return this;
   }
 
-  off(elementType, eventName) {
-    if (this.listeners[elementType]) {
-      delete this.listeners[elementType][eventName];
-    }
-    this.container.selectAll(`[data-cal-kind='${elementType}']`).on(eventName, null);
+  offRender(handler) {
+    this.renderListeners.delete(handler);
     return this;
   }
 
@@ -97,8 +99,6 @@ export class Calend3r {
       .append('div')
       .attr('class', 'calend3r')
       .attr('data-cal-kind', 'calendar');
-
-    applyListeners(root, this.listeners.calendar);
 
     if (cfg.showHeader) {
       root.append('div')
@@ -115,6 +115,8 @@ export class Calend3r {
     } else {
       this._renderDateGrid(body, range, cfg);
     }
+
+    this.renderListeners.forEach((handler) => handler(this));
 
     return this;
   }
@@ -183,8 +185,6 @@ export class Calend3r {
       .attr('data-weekday', d => String(d.weekday))
       .text(d => (d.dateObj ? formatDateLabel(d.dateObj, cfg) : ''));
 
-    applyListeners(dayCell, this.listeners.dateGrid, d => ({ date: d.dateObj }));
-
     const events = this._eventsInRange(range.start, addDays(range.end, 1));
 
     dayCell.each((day, i, nodes) => {
@@ -200,7 +200,6 @@ export class Calend3r {
         .attr('data-date-key', day.date)
         .text(evt => evt.title || '(untitled)');
 
-      applyListeners(wrappers, this.listeners.event, evt => ({ event: evt, date: day.dateObj }));
     });
   }
 
@@ -225,7 +224,6 @@ export class Calend3r {
       .attr('data-date-key', d => d.date)
       .attr('data-weekday', d => String(d.weekday));
 
-    applyListeners(dayCell, this.listeners.dateGrid, d => ({ date: d.dateObj }));
   }
 
   _renderTimeline(body, range, cfg) {
@@ -277,7 +275,6 @@ export class Calend3r {
         .classed('d3oc-weekend', day => day.getDay() === 0 || day.getDay() === 6)
         .attr('data-minutes', slot.minutes);
 
-      applyListeners(cells, this.listeners.timelineGrid, day => ({ day, slot }));
     });
 
     const start = range.start;
@@ -344,7 +341,6 @@ export class Calend3r {
       });
     });
 
-    applyListeners(eventNodes, this.listeners.event, evt => ({ event: evt }));
   }
 
   _startEventResize({ pointerEvent, edge, eventData, segment, day, canvasNode, cfg, visibleMinutes }) {
@@ -388,19 +384,6 @@ export class Calend3r {
       .sort((a, b) => a.start - b.start);
   }
 
-  _bindExistingNodes(elementType, eventName, handler) {
-    const sel = this.container.selectAll(`[data-cal-kind='${elementType}']`);
-    if (!sel.empty()) {
-      sel.on(eventName, function (ev, d) {
-        handler({
-          event: ev,
-          datum: d,
-          node: this
-        });
-      });
-    }
-  }
-
   _validateOptions() {
     const { view, timelineStepMinutes, dayStartHour, dayEndHour, monthColumns, monthStartsOn } = this.options;
 
@@ -440,6 +423,16 @@ function resolveSelection(container) {
     return container;
   }
   return d3.select(container);
+}
+
+function resolveElementSelector(target) {
+  if (typeof target !== 'string' || !target) {
+    throw new Error('target must be a non-empty string');
+  }
+  if (target === 'calendar' || target === 'dateGrid' || target === 'timelineGrid' || target === 'event') {
+    return `[data-cal-kind='${target}']`;
+  }
+  return target;
 }
 
 function mergeOptions(base, patch) {
@@ -559,15 +552,6 @@ function buildTimelineSlots(dayStartHour, dayEndHour, step) {
     });
   }
   return slots;
-}
-
-function applyListeners(selection, listeners, payloadFactory) {
-  Object.entries(listeners).forEach(([name, handler]) => {
-    selection.on(name, function (ev, d) {
-      const payload = payloadFactory ? payloadFactory(d) : {};
-      handler({ event: ev, datum: d, node: this, ...payload });
-    });
-  });
 }
 
 function overlapsDay(evt, day) {

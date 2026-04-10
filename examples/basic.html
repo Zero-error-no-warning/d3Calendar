@@ -52,17 +52,20 @@
       events
     });
 
-    cal.on('event', 'click', ({ datum }) => {
-      alert(`イベント: ${datum.title}`);
-    });
+    cal.onRender((instance) => {
+      instance.selectAll('event').on('click', (event, datum) => {
+        alert(`イベント: ${datum.title}`);
+      });
 
-    cal.on('timelineGrid', 'dblclick', ({ day, slot }) => {
-      console.log('timeline dblclick', day, slot.minutes, cal.dateToViewPosition(day));
-    });
+      instance.selectAll('timelineGrid').on('dblclick', (event, day) => {
+        const minutes = Number(event.currentTarget.dataset.minutes);
+        console.log('timeline dblclick', day, minutes, cal.dateToViewPosition(day));
+      });
 
-    cal.on('dateGrid', 'click', ({ datum }) => {
-      // d3.selectAll('.dateGrid').filter(d => d.date === '2026-04-10') で利用できる datum
-      console.log('dateGrid datum', datum);
+      instance.selectAll('dateGrid').on('click', (event, datum) => {
+        // d3.selectAll('.dateGrid').filter(d => d.date === '2026-04-10') で利用できる datum
+        console.log('dateGrid datum', datum);
+      });
     });
 
     document.querySelectorAll('button[data-view]').forEach((btn) => {
