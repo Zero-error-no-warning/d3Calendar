@@ -32,3 +32,7 @@
 ## 7. GitHub demo 公開方法
 - 疑義: 手順説明だけでよいか、即公開可能な構成まで含めるか。
 - 解消: `docs/` に公開用デモを追加し、GitHub Pages (GitHub Actions) 用 workflow も追加。
+
+## 8. Pages未有効リポジトリでの404エラー
+- 疑義: `Get Pages site failed (Not Found)` が出る場合に手動設定前提か自動有効化するか。
+- 解消: workflow の `actions/configure-pages` に `enablement: true` を設定し、初回有効化を試行。
