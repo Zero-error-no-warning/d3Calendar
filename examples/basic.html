@@ -25,6 +25,8 @@
     <button id="next">次へ</button>
     <button id="around3">前後3日</button>
     <button id="reset">通常表示</button>
+    <button id="toPos">日時→位置</button>
+    <button id="toDate">位置→日時</button>
   </div>
 
   <div id="calendar"></div>
@@ -55,7 +57,12 @@
     });
 
     cal.on('timelineGrid', 'dblclick', ({ day, slot }) => {
-      console.log('timeline dblclick', day, slot.minutes);
+      console.log('timeline dblclick', day, slot.minutes, cal.dateToViewPosition(day));
+    });
+
+    cal.on('dateGrid', 'click', ({ datum }) => {
+      // d3.selectAll('.dateGrid').filter(d => d.date === '2026-04-10') で利用できる datum
+      console.log('dateGrid datum', datum);
     });
 
     document.querySelectorAll('button[data-view]').forEach((btn) => {
@@ -93,6 +100,16 @@
     document.getElementById('reset').addEventListener('click', () => {
       cal.setOptions({ aroundDays: null });
       cal.setView(view, span);
+    });
+
+    document.getElementById('toPos').addEventListener('click', () => {
+      const pos = cal.dateToViewPosition(new Date('2026-04-10T10:30:00'));
+      alert(JSON.stringify(pos, null, 2));
+    });
+
+    document.getElementById('toDate').addEventListener('click', () => {
+      const date = cal.viewPositionToDate({ dayIndex: 0, minuteOfDay: 10 * 60 + 30 });
+      alert(date ? date.toISOString() : 'null');
     });
   </script>
 </body>

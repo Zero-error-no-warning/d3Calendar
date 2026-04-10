@@ -36,3 +36,7 @@
 ## 8. Pages未有効リポジトリでの404エラー
 - 疑義: `Get Pages site failed (Not Found)` が出る場合に手動設定前提か自動有効化するか。
 - 解消: workflow の `actions/configure-pages` に `enablement: true` を設定し、初回有効化を試行。
+
+## 9. 変更時のドキュメント同期
+- 疑義: 機能追加・変更時に usage / document をどの粒度で更新するか。
+- 解消: 機能変更ごとに README / examples / docs の usage・document を必ず更新し、実装とサンプルの乖離を残さない。
