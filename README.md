@@ -128,6 +128,8 @@ python -m http.server 8000
 
 `target` は `calendar | dateGrid | timelineGrid | event` を渡すと `data-cal-kind` ベースのセレクタに解決されます。通常の CSS セレクタ文字列も使用できます。
 
+`instance.selectAll('event')` はこのライブラリ独自のショートハンドです。内部的には `[data-cal-kind='event']` に変換されます（`.event` の誤記ではありません）。
+
 `render()` のたびに DOM は作り直されるため、イベントやプラグインのバインドは `onRender` で再適用してください。
 
 ### `dateToViewPosition(date)`
@@ -142,6 +144,8 @@ const pos = cal.dateToViewPosition('2026-04-10T10:30:00');
 // 例 (week): { viewType: 'week', dayIndex: 0, minuteOfDay: 630, yRatio: 0.4375, ... }
 ```
 
+> 補足: 返り値には `dayIndex` などの論理位置に加えて、描画済みであれば `x/y`（カレンダー相対）と `clientX/clientY`（画面座標）も含まれます。
+
 ### `viewPositionToDate(position)`
 
 現在のビュー上の位置情報から日時に変換します。
@@ -151,6 +155,41 @@ const pos = cal.dateToViewPosition('2026-04-10T10:30:00');
 
 ```js
 const dt = cal.viewPositionToDate({ dayIndex: 0, minuteOfDay: 10 * 60 + 30 });
+const dt2 = cal.viewPositionToDate({ x: 220, y: 140 }); // カレンダー左上基準の相対座標
+```
+
+> 補足: timeline(day/week) では `dayIndex` と `minuteOfDay`（または `yRatio`）に加えて、  
+> `x/y`（カレンダー相対）または `clientX/clientY`（画面座標）からも日時へ変換できます。
+
+```js
+cal.onRender((instance) => {
+  instance.select('calendar').on('click', (event) => {
+    const dt = instance.viewPositionToDate({
+      clientX: event.clientX,
+      clientY: event.clientY
+    });
+    console.log('clicked datetime:', dt); // timeline なら時刻まで、month/year なら日付(00:00)
+  });
+});
+```
+
+### 特定時刻に横線を引く
+
+timeline では `dateToViewPosition(date)` の `yRatio` を使って、任意時刻の横線を重ねられます。
+
+```js
+cal.onRender((instance) => {
+  const pos = instance.dateToViewPosition('2026-04-10T13:30:00');
+  if (!pos || !Number.isFinite(pos.yRatio)) return;
+  instance.select('calendar')
+    .append('div')
+    .attr('class', 'custom-line')
+    .style('position', 'absolute')
+    .style('left', '0')
+    .style('right', '0')
+    .style('top', `${pos.yRatio * 100}%`)
+    .style('border-top', '1px solid red');
+});
 ```
 
 ## d3 のセレクタで日付データを使う
