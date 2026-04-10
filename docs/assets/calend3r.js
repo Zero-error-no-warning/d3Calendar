@@ -405,7 +405,7 @@ export class Calend3r {
       .append('div')
       .attr('class', m => `d3oc-grid-line ${isHourLine(m, cfg.dayStartHour) ? 'd3oc-grid-line--hour' : 'd3oc-grid-line--step'}`)
       .attr('data-cal-kind', 'timelineGrid')
-      .attr('data-minute-offset', m)
+      .attr('data-minute-offset', m => m)
       .style('top', m => `${(m / visibleMinutes) * 100}%`);
 
     const eventsLayer = canvas.append('div').attr('class', 'd3oc-events-layer');
