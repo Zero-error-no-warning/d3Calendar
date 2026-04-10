@@ -8,6 +8,7 @@ const DEFAULT_OPTIONS = {
   targetDate: new Date(),
   view: { type: 'week', span: 1 },
   aroundDays: null,
+  monthColumns: 7,
   weekStartsOn: 1,
   dayStartHour: 0,
   dayEndHour: 24,
@@ -15,8 +16,7 @@ const DEFAULT_OPTIONS = {
   showHeader: true,
   events: [],
   locale: {
-    weekday: 'short',
-    date: 'numeric',
+    day: 'numeric',
     month: 'short',
     year: 'numeric'
   }
@@ -117,7 +117,9 @@ export class Calend3r {
 
   _renderDateGrid(body, range, cfg) {
     const days = eachDay(range.start, range.end);
-    const grid = body.append('div').attr('class', 'd3oc-date-grid');
+    const grid = body.append('div')
+      .attr('class', `d3oc-date-grid${cfg.view.type === 'month' ? ' d3oc-date-grid--month' : ''}`)
+      .style('--d3oc-month-columns', String(cfg.monthColumns));
 
     const dayCell = grid.selectAll('div.d3oc-day-cell')
       .data(days)
@@ -150,6 +152,7 @@ export class Calend3r {
   _renderTimeline(body, range, cfg) {
     const days = eachDay(range.start, range.end);
     const times = buildTimelineSlots(cfg.dayStartHour, cfg.dayEndHour, cfg.timelineStepMinutes);
+    const visibleMinutes = (cfg.dayEndHour - cfg.dayStartHour) * 60;
 
     const wrap = body.append('div')
       .attr('class', 'd3oc-timeline-wrap')
@@ -164,7 +167,9 @@ export class Calend3r {
       .attr('class', 'd3oc-day-col-label')
       .text(d => formatDateLabel(d, cfg));
 
-    const rows = wrap.selectAll('div.d3oc-time-row')
+    const canvas = wrap.append('div').attr('class', 'd3oc-timeline-canvas');
+
+    const rows = canvas.selectAll('div.d3oc-time-row')
       .data(times)
       .enter()
       .append('div')
@@ -192,16 +197,21 @@ export class Calend3r {
     const end = addDays(range.end, 1);
     const events = this._eventsInRange(start, end);
 
-    const eventsWrap = wrap.append('div').attr('class', 'd3oc-events-layer');
-
-    const eventNodes = eventsWrap.selectAll('div.d3oc-event')
-      .data(events)
+    const segments = buildTimelineEventSegments(events, days, cfg);
+    const dayWidthExpr = `(100% - 80px) / ${Math.max(days.length, 1)}`;
+    const eventsLayer = canvas.append('div').attr('class', 'd3oc-events-layer');
+    const eventNodes = eventsLayer.selectAll('div.d3oc-timeline-event')
+      .data(segments)
       .enter()
       .append('div')
-      .attr('class', 'd3oc-event')
+      .attr('class', 'd3oc-event d3oc-timeline-event')
       .attr('data-cal-kind', 'event')
-      .style('position', 'relative')
-      .text(evt => `${evt.title || '(untitled)'} (${timeHM(evt.start)}-${timeHM(evt.end)})`);
+      .style('left', d => `calc(80px + (${d.dayIndex} * (${dayWidthExpr})) + 2px)`)
+      .style('width', `calc(${dayWidthExpr} - 4px)`)
+      .style('top', d => `${(d.startMinute / visibleMinutes) * 100}%`)
+      .style('height', d => `${Math.max(((d.endMinute - d.startMinute) / visibleMinutes) * 100, 2)}%`)
+      .text(d => `${d.event.title || '(untitled)'} (${timeHM(d.event.start)}-${timeHM(d.event.end)})`)
+      .datum(d => d.event);
 
     applyListeners(eventNodes, this.listeners.event, evt => ({ event: evt }));
   }
@@ -228,7 +238,7 @@ export class Calend3r {
   }
 
   _validateOptions() {
-    const { view, timelineStepMinutes, dayStartHour, dayEndHour } = this.options;
+    const { view, timelineStepMinutes, dayStartHour, dayEndHour, monthColumns } = this.options;
 
     if (!VIEW_TYPES.has(view.type)) {
       throw new Error(`Unsupported view.type: ${view.type}`);
@@ -241,6 +251,9 @@ export class Calend3r {
     }
     if (dayStartHour < 0 || dayStartHour >= 24 || dayEndHour <= 0 || dayEndHour > 24 || dayStartHour >= dayEndHour) {
       throw new Error('dayStartHour/dayEndHour range is invalid');
+    }
+    if (!Number.isInteger(monthColumns) || monthColumns <= 0) {
+      throw new Error('monthColumns must be positive integer');
     }
   }
 }
@@ -412,4 +425,29 @@ function toDate(v) {
 
 function timeHM(d) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function buildTimelineEventSegments(events, days, cfg) {
+  const segments = [];
+  const visibleStart = cfg.dayStartHour * 60;
+  const visibleEnd = cfg.dayEndHour * 60;
+
+  days.forEach((day, dayIndex) => {
+    const dayStart = new Date(day);
+    dayStart.setHours(cfg.dayStartHour, 0, 0, 0);
+    const dayEnd = new Date(day);
+    dayEnd.setHours(cfg.dayEndHour, 0, 0, 0);
+
+    events.forEach(event => {
+      const segStart = new Date(Math.max(event.start.getTime(), dayStart.getTime()));
+      const segEnd = new Date(Math.min(event.end.getTime(), dayEnd.getTime()));
+      if (segEnd <= segStart) return;
+
+      const startMinute = Math.max(visibleStart, segStart.getHours() * 60 + segStart.getMinutes()) - visibleStart;
+      const endMinute = Math.min(visibleEnd, segEnd.getHours() * 60 + segEnd.getMinutes()) - visibleStart;
+      segments.push({ event, dayIndex, startMinute, endMinute });
+    });
+  });
+
+  return segments;
 }
