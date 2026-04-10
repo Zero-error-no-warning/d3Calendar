@@ -196,6 +196,15 @@ export class Calend3r {
     const start = range.start;
     const end = addDays(range.end, 1);
     const events = this._eventsInRange(start, end);
+    const step = cfg.timelineStepMinutes;
+
+    const timelineCells = new Map();
+    wrap.selectAll('.d3oc-time-cell').each(function (day) {
+      const cell = d3.select(this);
+      const cellDate = startOfDay(day);
+      const minutes = Number(cell.attr('data-minutes'));
+      timelineCells.set(`${cellDate.toISOString()}#${minutes}`, cell);
+    });
 
     const segments = buildTimelineEventSegments(events, days, cfg);
     const dayWidthExpr = `(100% - 80px) / ${Math.max(days.length, 1)}`;
