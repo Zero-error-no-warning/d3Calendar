@@ -29,12 +29,6 @@ export class Calend3r {
   constructor(container, options = {}) {
     this.container = resolveSelection(container);
     this.options = mergeOptions(DEFAULT_OPTIONS, options);
-    this.listeners = {
-      calendar: {},
-      dateGrid: {},
-      timelineGrid: {},
-      event: {}
-    };
     this.renderListeners = new Set();
 
     this._validateOptions();
@@ -95,27 +89,6 @@ export class Calend3r {
     return this;
   }
 
-  /**
-   * on(elementType, eventName, handler)
-   * @deprecated Use cal.selectAll(...).on(...) for d3-like API.
-   */
-  on(elementType, eventName, handler) {
-    if (!this.listeners[elementType]) {
-      throw new Error(`Unsupported elementType: ${elementType}`);
-    }
-    this.listeners[elementType][eventName] = handler;
-    this._bindExistingNodes(elementType, eventName, handler);
-    return this;
-  }
-
-  off(elementType, eventName) {
-    if (this.listeners[elementType]) {
-      delete this.listeners[elementType][eventName];
-    }
-    this.container.selectAll(`[data-cal-kind='${elementType}']`).on(eventName, null);
-    return this;
-  }
-
   render() {
     const cfg = this.options;
     const range = buildVisibleRange(cfg);
@@ -126,8 +99,6 @@ export class Calend3r {
       .append('div')
       .attr('class', 'calend3r')
       .attr('data-cal-kind', 'calendar');
-
-    applyListeners(root, this.listeners.calendar);
 
     if (cfg.showHeader) {
       root.append('div')
@@ -214,8 +185,6 @@ export class Calend3r {
       .attr('data-weekday', d => String(d.weekday))
       .text(d => (d.dateObj ? formatDateLabel(d.dateObj, cfg) : ''));
 
-    applyListeners(dayCell, this.listeners.dateGrid, d => ({ date: d.dateObj }));
-
     const events = this._eventsInRange(range.start, addDays(range.end, 1));
 
     dayCell.each((day, i, nodes) => {
@@ -231,7 +200,6 @@ export class Calend3r {
         .attr('data-date-key', day.date)
         .text(evt => evt.title || '(untitled)');
 
-      applyListeners(wrappers, this.listeners.event, evt => ({ event: evt, date: day.dateObj }));
     });
   }
 
@@ -256,7 +224,6 @@ export class Calend3r {
       .attr('data-date-key', d => d.date)
       .attr('data-weekday', d => String(d.weekday));
 
-    applyListeners(dayCell, this.listeners.dateGrid, d => ({ date: d.dateObj }));
   }
 
   _renderTimeline(body, range, cfg) {
@@ -308,7 +275,6 @@ export class Calend3r {
         .classed('d3oc-weekend', day => day.getDay() === 0 || day.getDay() === 6)
         .attr('data-minutes', slot.minutes);
 
-      applyListeners(cells, this.listeners.timelineGrid, day => ({ day, slot }));
     });
 
     const start = range.start;
@@ -375,7 +341,6 @@ export class Calend3r {
       });
     });
 
-    applyListeners(eventNodes, this.listeners.event, evt => ({ event: evt }));
   }
 
   _startEventResize({ pointerEvent, edge, eventData, segment, day, canvasNode, cfg, visibleMinutes }) {
@@ -417,19 +382,6 @@ export class Calend3r {
       .filter(Boolean)
       .filter(evt => evt.end > start && evt.start < end)
       .sort((a, b) => a.start - b.start);
-  }
-
-  _bindExistingNodes(elementType, eventName, handler) {
-    const sel = this.selectAll(elementType);
-    if (!sel.empty()) {
-      sel.on(eventName, function (ev, d) {
-        handler({
-          event: ev,
-          datum: d,
-          node: this
-        });
-      });
-    }
   }
 
   _validateOptions() {
@@ -600,15 +552,6 @@ function buildTimelineSlots(dayStartHour, dayEndHour, step) {
     });
   }
   return slots;
-}
-
-function applyListeners(selection, listeners, payloadFactory) {
-  Object.entries(listeners).forEach(([name, handler]) => {
-    selection.on(name, function (ev, d) {
-      const payload = payloadFactory ? payloadFactory(d) : {};
-      handler({ event: ev, datum: d, node: this, ...payload });
-    });
-  });
 }
 
 function overlapsDay(evt, day) {

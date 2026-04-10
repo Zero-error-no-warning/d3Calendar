@@ -56,17 +56,20 @@
       events
     });
 
-    cal.on('event', 'click', ({ datum }) => {
-      alert(`clicked: ${datum.title}`);
-    });
+    cal.onRender((instance) => {
+      instance.selectAll('event').on('click', (event, datum) => {
+        alert(`clicked: ${datum.title}`);
+      });
 
-    cal.on('dateGrid', 'dblclick', ({ date }) => {
-      addEventOnDate(date, 9, 60);
-    });
+      instance.selectAll('dateGrid').on('dblclick', (event, dayDatum) => {
+        addEventOnDate(dayDatum.dateObj, 9, 60);
+      });
 
-    cal.on('timelineGrid', 'dblclick', ({ day, slot }) => {
-      addEventOnDate(day, Math.floor(slot.minutes / 60), 30, slot.minutes % 60);
-      console.log('dateToViewPosition', cal.dateToViewPosition(day));
+      instance.selectAll('timelineGrid').on('dblclick', (event, day) => {
+        const slotMinutes = Number(event.currentTarget.dataset.minutes);
+        addEventOnDate(day, Math.floor(slotMinutes / 60), 30, slotMinutes % 60);
+        console.log('dateToViewPosition', cal.dateToViewPosition(day));
+      });
     });
 
     function addEventOnDate(date, startHour = 9, durationMinutes = 60, startMinute = 0) {
