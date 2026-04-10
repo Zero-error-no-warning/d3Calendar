@@ -100,18 +100,6 @@ python -m http.server 8000
 - 前後3日表示 (`aroundDays`)
 - イベントクリックとタイムラインダブルクリックのハンドラ設定
 
-## GitHubでdemoサイトとして公開する方法
-
-このリポジトリには GitHub Pages デプロイ用 workflow (`.github/workflows/deploy-pages.yml`) を追加しています。
-
-1. GitHub リポジトリの **Settings > Pages** を開く  
-2. **Build and deployment** で **Source = GitHub Actions** を選択  
-3. `main` ブランチに push すると workflow が実行され、`docs/` 配下が公開されます  
-4. 公開URLは通常 `https://<ユーザー名>.github.io/<リポジトリ名>/` です  
-
-> 例: リポジトリ名が `d3Calendar` の場合  
-> `https://<ユーザー名>.github.io/d3Calendar/`
-
 ### instance methods
 
 - `setOptions(options)`
