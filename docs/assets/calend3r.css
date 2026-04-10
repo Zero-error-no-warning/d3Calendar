@@ -19,7 +19,7 @@
 .d3oc-date-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 8px;
+  gap: 0;
 }
 
 .d3oc-date-grid--month {
@@ -29,9 +29,34 @@
 .d3oc-day-cell {
   min-height: 96px;
   border: 1px solid #d0d7de;
-  border-radius: 6px;
+  border-radius: 0;
   padding: 6px;
   font-size: 12px;
+  margin: -1px 0 0 -1px;
+}
+
+.d3oc-day-cell--padding {
+  color: #8c959f;
+  background: #f6f8fa;
+}
+
+.d3oc-year-grid {
+  display: grid;
+  grid-template-rows: repeat(7, 1fr);
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(8px, 1fr);
+  gap: 2px;
+}
+
+.d3oc-year-day {
+  width: 100%;
+  min-height: 10px;
+  border-radius: 2px;
+  background: #ddf4ff;
+}
+
+.d3oc-year-day--padding {
+  opacity: 0.25;
 }
 
 .d3oc-timeline-wrap {
@@ -42,6 +67,13 @@
 
 .d3oc-timeline-canvas {
   position: relative;
+}
+
+.d3oc-lines-layer {
+  position: absolute;
+  inset: 0;
+  left: 80px;
+  pointer-events: none;
 }
 
 .d3oc-timeline-header,
@@ -76,7 +108,7 @@
 
 .d3oc-events-layer {
   position: absolute;
-  inset: 0;
+  inset: 0 0 0 80px;
   pointer-events: none;
 }
 
@@ -85,4 +117,41 @@
   margin-top: 0;
   pointer-events: auto;
   overflow: hidden;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.d3oc-grid-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+}
+
+.d3oc-grid-line--hour {
+  border-top: 1px solid #c5d1e0;
+}
+
+.d3oc-grid-line--step {
+  border-top: 1px dotted #d8dee7;
+}
+
+.d3oc-resize-handle {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 8px;
+  background: rgba(9, 105, 218, 0.2);
+  cursor: ns-resize;
+}
+
+.d3oc-resize-handle--start {
+  top: 0;
+}
+
+.d3oc-resize-handle--end {
+  bottom: 0;
+}
+
+.d3oc-weekend {
+  background-color: #fbfdff;
 }
