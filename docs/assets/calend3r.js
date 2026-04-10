@@ -8,6 +8,7 @@ const DEFAULT_OPTIONS = {
   targetDate: new Date(),
   view: { type: 'week', span: 1 },
   aroundDays: null,
+  monthColumns: 7,
   weekStartsOn: 1,
   dayStartHour: 0,
   dayEndHour: 24,
@@ -15,8 +16,7 @@ const DEFAULT_OPTIONS = {
   showHeader: true,
   events: [],
   locale: {
-    weekday: 'short',
-    date: 'numeric',
+    day: 'numeric',
     month: 'short',
     year: 'numeric'
   }
@@ -117,7 +117,9 @@ export class Calend3r {
 
   _renderDateGrid(body, range, cfg) {
     const days = eachDay(range.start, range.end);
-    const grid = body.append('div').attr('class', 'd3oc-date-grid');
+    const grid = body.append('div')
+      .attr('class', `d3oc-date-grid${cfg.view.type === 'month' ? ' d3oc-date-grid--month' : ''}`)
+      .style('--d3oc-month-columns', String(cfg.monthColumns));
 
     const dayCell = grid.selectAll('div.d3oc-day-cell')
       .data(days)
@@ -191,17 +193,34 @@ export class Calend3r {
     const start = range.start;
     const end = addDays(range.end, 1);
     const events = this._eventsInRange(start, end);
+    const step = cfg.timelineStepMinutes;
 
-    const eventsWrap = wrap.append('div').attr('class', 'd3oc-events-layer');
+    const timelineCells = new Map();
+    wrap.selectAll('.d3oc-time-cell').each(function (day) {
+      const cell = d3.select(this);
+      const cellDate = startOfDay(day);
+      const minutes = Number(cell.attr('data-minutes'));
+      timelineCells.set(`${cellDate.toISOString()}#${minutes}`, cell);
+    });
 
-    const eventNodes = eventsWrap.selectAll('div.d3oc-event')
-      .data(events)
-      .enter()
-      .append('div')
-      .attr('class', 'd3oc-event')
-      .attr('data-cal-kind', 'event')
-      .style('position', 'relative')
-      .text(evt => `${evt.title || '(untitled)'} (${timeHM(evt.start)}-${timeHM(evt.end)})`);
+    const renderedEventNodes = [];
+    events.forEach(evt => {
+      const clippedStart = clipToVisibleTime(evt.start, range, cfg);
+      if (!clippedStart) return;
+      const slotMinutes = floorToStep(clippedStart.getHours() * 60 + clippedStart.getMinutes(), step);
+      const cellKey = `${startOfDay(clippedStart).toISOString()}#${slotMinutes}`;
+      const hostCell = timelineCells.get(cellKey);
+      if (!hostCell) return;
+
+      const node = hostCell.append('div')
+        .datum(evt)
+        .attr('class', 'd3oc-event')
+        .attr('data-cal-kind', 'event')
+        .text(`${evt.title || '(untitled)'} (${timeHM(evt.start)}-${timeHM(evt.end)})`);
+      renderedEventNodes.push(node);
+    });
+
+    const eventNodes = d3.selectAll(renderedEventNodes.map(node => node.node()));
 
     applyListeners(eventNodes, this.listeners.event, evt => ({ event: evt }));
   }
@@ -228,7 +247,7 @@ export class Calend3r {
   }
 
   _validateOptions() {
-    const { view, timelineStepMinutes, dayStartHour, dayEndHour } = this.options;
+    const { view, timelineStepMinutes, dayStartHour, dayEndHour, monthColumns } = this.options;
 
     if (!VIEW_TYPES.has(view.type)) {
       throw new Error(`Unsupported view.type: ${view.type}`);
@@ -241,6 +260,9 @@ export class Calend3r {
     }
     if (dayStartHour < 0 || dayStartHour >= 24 || dayEndHour <= 0 || dayEndHour > 24 || dayStartHour >= dayEndHour) {
       throw new Error('dayStartHour/dayEndHour range is invalid');
+    }
+    if (!Number.isInteger(monthColumns) || monthColumns <= 0) {
+      throw new Error('monthColumns must be positive integer');
     }
   }
 }
@@ -412,4 +434,22 @@ function toDate(v) {
 
 function timeHM(d) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function floorToStep(minutes, step) {
+  return Math.floor(minutes / step) * step;
+}
+
+function clipToVisibleTime(dateTime, range, cfg) {
+  const day = startOfDay(dateTime);
+  if (day < startOfDay(range.start) || day > startOfDay(range.end)) {
+    return null;
+  }
+  const mins = dateTime.getHours() * 60 + dateTime.getMinutes();
+  const visibleStart = cfg.dayStartHour * 60;
+  const visibleEnd = cfg.dayEndHour * 60;
+  const clippedMinutes = Math.max(visibleStart, Math.min(mins, visibleEnd - 1));
+  const clipped = new Date(day);
+  clipped.setHours(Math.floor(clippedMinutes / 60), clippedMinutes % 60, 0, 0);
+  return clipped;
 }

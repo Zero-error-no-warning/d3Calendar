@@ -22,6 +22,10 @@
   gap: 8px;
 }
 
+.d3oc-date-grid--month {
+  grid-template-columns: repeat(var(--d3oc-month-columns, 7), minmax(0, 1fr));
+}
+
 .d3oc-day-cell {
   min-height: 96px;
   border: 1px solid #d0d7de;
