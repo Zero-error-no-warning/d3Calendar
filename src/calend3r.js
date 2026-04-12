@@ -789,6 +789,20 @@ function timelinePositionToDate(day, minuteOfDay, timelineStepMinutes) {
   return result;
 }
 
+function clampEventStartInDay(startCandidate, day, cfg, durationMs) {
+  const dayStart = startOfDay(day);
+  const minStart = new Date(dayStart);
+  minStart.setHours(cfg.dayStartHour, 0, 0, 0);
+  const maxStart = new Date(dayStart);
+  maxStart.setHours(cfg.dayEndHour, 0, 0, 0);
+  maxStart.setMilliseconds(maxStart.getMilliseconds() - durationMs);
+  if (maxStart < minStart) return minStart;
+  const nextStart = new Date(startCandidate);
+  if (nextStart < minStart) return minStart;
+  if (nextStart > maxStart) return maxStart;
+  return nextStart;
+}
+
 function buildTimelineEventSegments(events, days, cfg) {
   const segments = [];
   const visibleStart = cfg.dayStartHour * 60;

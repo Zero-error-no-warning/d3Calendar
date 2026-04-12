@@ -432,7 +432,7 @@ export class Calend3r {
       .attr('data-edge', 'end');
 
     const onResizeStart = (ev, segment) => {
-      ev.preventDefault();
+      ev.preventDefault();https://github.com/Zero-error-no-warning/d3Calendar/pull/15/conflict?name=src%252Fcalend3r.js&ancestor_oid=e863d4c3aaaa15fcdb5e80874573ff44e53dbc87&base_oid=697498aa0fafd566aaef5b961f4cf61006253c41&head_oid=3863af6fc54c23a3d7ab6b1d14e5bce63f7ae33d
       ev.stopPropagation();
       const edge = d3.select(ev.currentTarget).attr('data-edge');
       if (!segment || !canvasNode) return;
@@ -787,6 +787,20 @@ function timelinePositionToDate(day, minuteOfDay, timelineStepMinutes) {
   const result = addDays(startOfDay(day), dayDelta);
   result.setHours(Math.floor(normalizedMinute / 60), normalizedMinute % 60, 0, 0);
   return result;
+}
+
+function clampEventStartInDay(startCandidate, day, cfg, durationMs) {
+  const dayStart = startOfDay(day);
+  const minStart = new Date(dayStart);
+  minStart.setHours(cfg.dayStartHour, 0, 0, 0);
+  const maxStart = new Date(dayStart);
+  maxStart.setHours(cfg.dayEndHour, 0, 0, 0);
+  maxStart.setMilliseconds(maxStart.getMilliseconds() - durationMs);
+  if (maxStart < minStart) return minStart;
+  const nextStart = new Date(startCandidate);
+  if (nextStart < minStart) return minStart;
+  if (nextStart > maxStart) return maxStart;
+  return nextStart;
 }
 
 function buildTimelineEventSegments(events, days, cfg) {
