@@ -453,25 +453,15 @@ export class Calend3r {
       .on('mousedown', onResizeStart)
       .on('touchstart', onResizeStart);
 
-    eventNodes.on('pointerdown', (ev, evt) => {
-      if (ev.target && ev.target.closest && ev.target.closest('.d3oc-resize-handle')) return;
-      ev.preventDefault();
-      const segment = segments.find(seg => seg.event.id === evt.id);
-      if (!segment || !canvasNode) return;
-      this._startEventDrag({
-        pointerEvent: ev,
-        eventData: evt,
-        day: days[segment.dayIndex],
-        canvasNode,
-        cfg,
-        visibleMinutes
-      });
-    });
-
   }
 
   _startEventResize({ startEvent, edge, eventData, segment, day, canvasNode, cfg, visibleMinutes }) {
     const minDurationMs = Math.max(cfg.timelineStepMinutes, 1) * 60000;
+    console.log('[calend3r] resize start', {
+      edge,
+      start: eventData.start.toISOString(),
+      end: eventData.end.toISOString()
+    });
     const clientY = eventClientY(startEvent);
     if (!Number.isFinite(clientY)) return;
     const onMove = (moveEv) => {
@@ -499,29 +489,6 @@ export class Calend3r {
       && typeof startEvent.currentTarget.setPointerCapture === 'function') {
       startEvent.currentTarget.setPointerCapture(startEvent.pointerId);
     }
-  }
-
-  _startEventDrag({ pointerEvent, eventData, day, canvasNode, cfg, visibleMinutes }) {
-    const durationMs = Math.max(eventData.end.getTime() - eventData.start.getTime(), 0);
-    const onMove = (moveEv) => {
-      moveEv.preventDefault();
-      const pointerDate = pointerToTimelineDate(day, moveEv.clientY, canvasNode, cfg, visibleMinutes);
-      if (!pointerDate) return;
-      const clampedStart = clampEventStartInDay(pointerDate, day, cfg, durationMs);
-      const updates = {
-        start: clampedStart,
-        end: new Date(clampedStart.getTime() + durationMs)
-      };
-      this._patchEvent(eventData.id, updates);
-      this.render();
-    };
-    const onUp = () => {
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
-    };
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onUp);
-    pointerEvent.currentTarget.setPointerCapture(pointerEvent.pointerId);
   }
 
   _patchEvent(eventId, patch) {

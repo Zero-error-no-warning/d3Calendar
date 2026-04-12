@@ -432,7 +432,7 @@ export class Calend3r {
       .attr('data-edge', 'end');
 
     const onResizeStart = (ev, segment) => {
-      ev.preventDefault();
+      ev.preventDefault();https://github.com/Zero-error-no-warning/d3Calendar/pull/15/conflict?name=src%252Fcalend3r.js&ancestor_oid=e863d4c3aaaa15fcdb5e80874573ff44e53dbc87&base_oid=697498aa0fafd566aaef5b961f4cf61006253c41&head_oid=3863af6fc54c23a3d7ab6b1d14e5bce63f7ae33d
       ev.stopPropagation();
       const edge = d3.select(ev.currentTarget).attr('data-edge');
       if (!segment || !canvasNode) return;
@@ -453,25 +453,15 @@ export class Calend3r {
       .on('mousedown', onResizeStart)
       .on('touchstart', onResizeStart);
 
-    eventNodes.on('pointerdown', (ev, evt) => {
-      if (ev.target && ev.target.closest && ev.target.closest('.d3oc-resize-handle')) return;
-      ev.preventDefault();
-      const segment = segments.find(seg => seg.event.id === evt.id);
-      if (!segment || !canvasNode) return;
-      this._startEventDrag({
-        pointerEvent: ev,
-        eventData: evt,
-        day: days[segment.dayIndex],
-        canvasNode,
-        cfg,
-        visibleMinutes
-      });
-    });
-
   }
 
   _startEventResize({ startEvent, edge, eventData, segment, day, canvasNode, cfg, visibleMinutes }) {
     const minDurationMs = Math.max(cfg.timelineStepMinutes, 1) * 60000;
+    console.log('[calend3r] resize start', {
+      edge,
+      start: eventData.start.toISOString(),
+      end: eventData.end.toISOString()
+    });
     const clientY = eventClientY(startEvent);
     if (!Number.isFinite(clientY)) return;
     const onMove = (moveEv) => {
@@ -499,29 +489,6 @@ export class Calend3r {
       && typeof startEvent.currentTarget.setPointerCapture === 'function') {
       startEvent.currentTarget.setPointerCapture(startEvent.pointerId);
     }
-  }
-
-  _startEventDrag({ pointerEvent, eventData, day, canvasNode, cfg, visibleMinutes }) {
-    const durationMs = Math.max(eventData.end.getTime() - eventData.start.getTime(), 0);
-    const onMove = (moveEv) => {
-      moveEv.preventDefault();
-      const pointerDate = pointerToTimelineDate(day, moveEv.clientY, canvasNode, cfg, visibleMinutes);
-      if (!pointerDate) return;
-      const clampedStart = clampEventStartInDay(pointerDate, day, cfg, durationMs);
-      const updates = {
-        start: clampedStart,
-        end: new Date(clampedStart.getTime() + durationMs)
-      };
-      this._patchEvent(eventData.id, updates);
-      this.render();
-    };
-    const onUp = () => {
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
-    };
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onUp);
-    pointerEvent.currentTarget.setPointerCapture(pointerEvent.pointerId);
   }
 
   _patchEvent(eventId, patch) {
