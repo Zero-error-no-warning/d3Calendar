@@ -422,8 +422,7 @@ export class Calend3r {
       .style('width', `calc(${dayWidthPct.toFixed(6)}% - 4px)`)
       .style('top', d => `${(d.startMinute / visibleMinutes) * 100}%`)
       .style('height', d => `${Math.max(((d.endMinute - d.startMinute) / visibleMinutes) * 100, 2)}%`)
-      .text(d => `${d.event.title || '(untitled)'} (${timeHM(d.event.start)}-${timeHM(d.event.end)})`)
-      .datum(d => d.event);
+      .text(d => `${d.event.title || '(untitled)'} (${timeHM(d.event.start)}-${timeHM(d.event.end)})`);
 
     eventNodes.append('div')
       .attr('class', 'd3oc-resize-handle d3oc-resize-handle--start')
@@ -432,16 +431,15 @@ export class Calend3r {
       .attr('class', 'd3oc-resize-handle d3oc-resize-handle--end')
       .attr('data-edge', 'end');
 
-    eventNodes.selectAll('.d3oc-resize-handle').on('pointerdown', (ev, evt) => {
+    eventNodes.selectAll('.d3oc-resize-handle').on('pointerdown', (ev, segment) => {
       ev.preventDefault();
       ev.stopPropagation();
       const edge = d3.select(ev.currentTarget).attr('data-edge');
-      const segment = segments.find(seg => seg.event.id === evt.id);
       if (!segment || !canvasNode) return;
       this._startEventResize({
         pointerEvent: ev,
         edge,
-        eventData: evt,
+        eventData: segment.event,
         segment,
         day: days[segment.dayIndex],
         canvasNode,
