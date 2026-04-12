@@ -422,8 +422,7 @@ export class Calend3r {
       .style('width', `calc(${dayWidthPct.toFixed(6)}% - 4px)`)
       .style('top', d => `${(d.startMinute / visibleMinutes) * 100}%`)
       .style('height', d => `${Math.max(((d.endMinute - d.startMinute) / visibleMinutes) * 100, 2)}%`)
-      .text(d => `${d.event.title || '(untitled)'} (${timeHM(d.event.start)}-${timeHM(d.event.end)})`)
-      .datum(d => d.event);
+      .text(d => `${d.event.title || '(untitled)'} (${timeHM(d.event.start)}-${timeHM(d.event.end)})`);
 
     eventNodes.append('div')
       .attr('class', 'd3oc-resize-handle d3oc-resize-handle--start')
@@ -432,32 +431,47 @@ export class Calend3r {
       .attr('class', 'd3oc-resize-handle d3oc-resize-handle--end')
       .attr('data-edge', 'end');
 
-    eventNodes.selectAll('.d3oc-resize-handle').on('pointerdown', (ev, evt) => {
+    const onResizeStart = (ev, segment) => {
       ev.preventDefault();
       ev.stopPropagation();
       const edge = d3.select(ev.currentTarget).attr('data-edge');
-      const segment = segments.find(seg => seg.event.id === evt.id);
       if (!segment || !canvasNode) return;
       this._startEventResize({
-        pointerEvent: ev,
+        startEvent: ev,
         edge,
-        eventData: evt,
+        eventData: segment.event,
         segment,
         day: days[segment.dayIndex],
         canvasNode,
         cfg,
         visibleMinutes
       });
-    });
+    };
+
+    eventNodes.selectAll('.d3oc-resize-handle')
+      .on('pointerdown', onResizeStart)
+      .on('mousedown', onResizeStart)
+      .on('touchstart', onResizeStart);
 
   }
 
-  _startEventResize({ pointerEvent, edge, eventData, segment, day, canvasNode, cfg, visibleMinutes }) {
+  _startEventResize({ startEvent, edge, eventData, segment, day, canvasNode, cfg, visibleMinutes }) {
     const minDurationMs = Math.max(cfg.timelineStepMinutes, 1) * 60000;
+    const clientY = eventClientY(startEvent);
+    if (!Number.isFinite(clientY)) return;
+    const dragStartDate = pointerToTimelineDate(day, clientY, canvasNode, cfg, visibleMinutes);
+    let latestDragDate = dragStartDate;
+    console.log('[calend3r] resize drag point start', {
+      edge,
+      datetime: dragStartDate ? dragStartDate.toISOString() : null
+    });
     const onMove = (moveEv) => {
       moveEv.preventDefault();
-      const nextDate = pointerToTimelineDate(day, moveEv.clientY, canvasNode, cfg, visibleMinutes);
+      const moveClientY = eventClientY(moveEv);
+      if (!Number.isFinite(moveClientY)) return;
+      const nextDate = pointerToTimelineDate(day, moveClientY, canvasNode, cfg, visibleMinutes);
       if (!nextDate) return;
+      latestDragDate = nextDate;
       const updates = {};
       if (edge === 'start') {
         const limited = new Date(Math.min(nextDate.getTime(), eventData.end.getTime() - minDurationMs));
@@ -469,13 +483,22 @@ export class Calend3r {
       this._patchEvent(eventData.id, updates);
       this.render();
     };
-    const onUp = () => {
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
-    };
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onUp);
-    pointerEvent.currentTarget.setPointerCapture(pointerEvent.pointerId);
+    const removeResizeListeners = addResizeListeners(startEvent, onMove, (endEv) => {
+      const endClientY = eventClientY(endEv);
+      const dragEndDate = Number.isFinite(endClientY)
+        ? pointerToTimelineDate(day, endClientY, canvasNode, cfg, visibleMinutes)
+        : latestDragDate;
+      console.log('[calend3r] resize drag point end', {
+        edge,
+        datetime: dragEndDate ? dragEndDate.toISOString() : null
+      });
+      removeResizeListeners();
+    });
+    if (typeof startEvent.pointerId === 'number'
+      && startEvent.currentTarget
+      && typeof startEvent.currentTarget.setPointerCapture === 'function') {
+      startEvent.currentTarget.setPointerCapture(startEvent.pointerId);
+    }
   }
 
   _patchEvent(eventId, patch) {
@@ -515,6 +538,31 @@ export class Calend3r {
       throw new Error('monthStartsOn must be integer 0..6');
     }
   }
+}
+
+function addResizeListeners(startEvent, onMove, onUp) {
+  const isTouch = startEvent.type === 'touchstart';
+  const isPointer = startEvent.type === 'pointerdown';
+  if (isTouch) {
+    const touchMove = (ev) => onMove(ev);
+    const touchEnd = (ev) => onUp(ev);
+    window.addEventListener('touchmove', touchMove, { passive: false });
+    window.addEventListener('touchend', touchEnd);
+    window.addEventListener('touchcancel', touchEnd);
+    return () => {
+      window.removeEventListener('touchmove', touchMove);
+      window.removeEventListener('touchend', touchEnd);
+      window.removeEventListener('touchcancel', touchEnd);
+    };
+  }
+  const moveEventName = isPointer ? 'pointermove' : 'mousemove';
+  const upEventName = isPointer ? 'pointerup' : 'mouseup';
+  window.addEventListener(moveEventName, onMove);
+  window.addEventListener(upEventName, onUp);
+  return () => {
+    window.removeEventListener(moveEventName, onMove);
+    window.removeEventListener(upEventName, onUp);
+  };
 }
 
 export function createCalend3r(container, options = {}) {
@@ -728,6 +776,17 @@ function pointerToTimelineDate(day, clientY, canvasNode, cfg, visibleMinutes) {
   const relativeY = clientY - rect.top;
   const absoluteMinutes = cfg.dayStartHour * 60 + (relativeY / rect.height) * visibleMinutes;
   return timelinePositionToDate(day, absoluteMinutes, cfg.timelineStepMinutes);
+}
+
+function eventClientY(event) {
+  if (Number.isFinite(event?.clientY)) return Number(event.clientY);
+  if (event?.touches?.[0] && Number.isFinite(event.touches[0].clientY)) {
+    return Number(event.touches[0].clientY);
+  }
+  if (event?.changedTouches?.[0] && Number.isFinite(event.changedTouches[0].clientY)) {
+    return Number(event.changedTouches[0].clientY);
+  }
+  return null;
 }
 
 function timelinePositionToDate(day, minuteOfDay, timelineStepMinutes) {
