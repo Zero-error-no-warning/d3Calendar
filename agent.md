@@ -40,3 +40,7 @@
 ## 9. 変更時のドキュメント同期
 - 疑義: 機能追加・変更時に usage / document をどの粒度で更新するか。
 - 解消: 機能変更ごとに README / examples / docs の usage・document を必ず更新し、実装とサンプルの乖離を残さない。
+
+## 10. Pull Request本文の言語
+- 疑義: PRタイトル・本文の言語指定が必要か。
+- 解消: Pull Request のタイトルと本文は日本語で記載する。
