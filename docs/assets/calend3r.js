@@ -457,9 +457,10 @@ export class Calend3r {
 
   _startEventResize({ startEvent, edge, eventData, segment, day, canvasNode, cfg, visibleMinutes }) {
     const minDurationMs = Math.max(cfg.timelineStepMinutes, 1) * 60000;
+    const resolveCanvasNode = () => this.container.select('.d3oc-timeline-canvas').node() || canvasNode;
     const clientY = eventClientY(startEvent);
     if (!Number.isFinite(clientY)) return;
-    const dragStartDate = pointerToTimelineDate(day, clientY, canvasNode, cfg, visibleMinutes);
+    const dragStartDate = pointerToTimelineDate(day, clientY, resolveCanvasNode(), cfg, visibleMinutes);
     let latestDragDate = dragStartDate;
     console.log('[calend3r] resize drag point start', {
       edge,
@@ -469,7 +470,7 @@ export class Calend3r {
       moveEv.preventDefault();
       const moveClientY = eventClientY(moveEv);
       if (!Number.isFinite(moveClientY)) return;
-      const nextDate = pointerToTimelineDate(day, moveClientY, canvasNode, cfg, visibleMinutes);
+      const nextDate = pointerToTimelineDate(day, moveClientY, resolveCanvasNode(), cfg, visibleMinutes);
       if (!nextDate) return;
       latestDragDate = nextDate;
       const updates = {};
@@ -486,7 +487,7 @@ export class Calend3r {
     const removeResizeListeners = addResizeListeners(startEvent, onMove, (endEv) => {
       const endClientY = eventClientY(endEv);
       const dragEndDate = Number.isFinite(endClientY)
-        ? pointerToTimelineDate(day, endClientY, canvasNode, cfg, visibleMinutes)
+        ? pointerToTimelineDate(day, endClientY, resolveCanvasNode(), cfg, visibleMinutes)
         : latestDragDate;
       console.log('[calend3r] resize drag point end', {
         edge,
