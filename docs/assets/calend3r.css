@@ -119,6 +119,11 @@
   overflow: hidden;
   padding-top: 8px;
   padding-bottom: 8px;
+  cursor: grab;
+}
+
+.d3oc-timeline-event:active {
+  cursor: grabbing;
 }
 
 .d3oc-grid-line {
