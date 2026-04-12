@@ -457,19 +457,21 @@ export class Calend3r {
 
   _startEventResize({ startEvent, edge, eventData, segment, day, canvasNode, cfg, visibleMinutes }) {
     const minDurationMs = Math.max(cfg.timelineStepMinutes, 1) * 60000;
-    console.log('[calend3r] resize start', {
-      edge,
-      start: eventData.start.toISOString(),
-      end: eventData.end.toISOString()
-    });
     const clientY = eventClientY(startEvent);
     if (!Number.isFinite(clientY)) return;
+    const dragStartDate = pointerToTimelineDate(day, clientY, canvasNode, cfg, visibleMinutes);
+    let latestDragDate = dragStartDate;
+    console.log('[calend3r] resize drag point start', {
+      edge,
+      datetime: dragStartDate ? dragStartDate.toISOString() : null
+    });
     const onMove = (moveEv) => {
       moveEv.preventDefault();
       const moveClientY = eventClientY(moveEv);
       if (!Number.isFinite(moveClientY)) return;
       const nextDate = pointerToTimelineDate(day, moveClientY, canvasNode, cfg, visibleMinutes);
       if (!nextDate) return;
+      latestDragDate = nextDate;
       const updates = {};
       if (edge === 'start') {
         const limited = new Date(Math.min(nextDate.getTime(), eventData.end.getTime() - minDurationMs));
@@ -481,7 +483,15 @@ export class Calend3r {
       this._patchEvent(eventData.id, updates);
       this.render();
     };
-    const removeResizeListeners = addResizeListeners(startEvent, onMove, () => {
+    const removeResizeListeners = addResizeListeners(startEvent, onMove, (endEv) => {
+      const endClientY = eventClientY(endEv);
+      const dragEndDate = Number.isFinite(endClientY)
+        ? pointerToTimelineDate(day, endClientY, canvasNode, cfg, visibleMinutes)
+        : latestDragDate;
+      console.log('[calend3r] resize drag point end', {
+        edge,
+        datetime: dragEndDate ? dragEndDate.toISOString() : null
+      });
       removeResizeListeners();
     });
     if (typeof startEvent.pointerId === 'number'
@@ -535,7 +545,7 @@ function addResizeListeners(startEvent, onMove, onUp) {
   const isPointer = startEvent.type === 'pointerdown';
   if (isTouch) {
     const touchMove = (ev) => onMove(ev);
-    const touchEnd = () => onUp();
+    const touchEnd = (ev) => onUp(ev);
     window.addEventListener('touchmove', touchMove, { passive: false });
     window.addEventListener('touchend', touchEnd);
     window.addEventListener('touchcancel', touchEnd);
