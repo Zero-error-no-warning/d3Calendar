@@ -421,7 +421,7 @@ export class Calend3r {
       .style('left', d => `calc(${(d.dayIndex * dayWidthPct).toFixed(6)}% + 2px)`)
       .style('width', `calc(${dayWidthPct.toFixed(6)}% - 4px)`)
       .style('top', d => `${(d.startMinute / visibleMinutes) * 100}%`)
-      .style('height', d => `${Math.max(((d.endMinute - d.startMinute) / visibleMinutes) * 100, 2)}%`)
+      .style('bottom', d => `${100 - ((d.endMinute / visibleMinutes) * 100)}%`)
       .text(d => `${d.event.title || '(untitled)'} (${timeHM(d.event.start)}-${timeHM(d.event.end)})`);
 
     eventNodes.append('div')
