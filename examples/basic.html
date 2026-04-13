@@ -58,8 +58,7 @@
       });
 
       instance.selectAll('timelineGrid').on('dblclick', (event, day) => {
-        const minutes = Number(event.currentTarget.dataset.minutes);
-        console.log('timeline dblclick', day, minutes, cal.dateToViewPosition(day));
+        console.log('timeline dblclick', day, cal.dateToViewPosition(day));
       });
 
       instance.selectAll('dateGrid').on('click', (event, datum) => {

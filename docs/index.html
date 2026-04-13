@@ -66,8 +66,7 @@
       });
 
       instance.selectAll('timelineGrid').on('dblclick', (event, day) => {
-        const slotMinutes = Number(event.currentTarget.dataset.minutes);
-        addEventOnDate(day, Math.floor(slotMinutes / 60), 30, slotMinutes % 60);
+        addEventOnDate(day, day.getHours(), 30, day.getMinutes());
         console.log('dateToViewPosition', cal.dateToViewPosition(day));
       });
     });
