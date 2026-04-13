@@ -54,7 +54,7 @@ d3.js で Outlook 風の予定表 UI を描画する軽量ライブラリです�
     });
 
     instance.selectAll('timelineGrid').on('dblclick', (event, day) => {
-      console.log('new event on', day, Number(event.currentTarget.dataset.minutes));
+      console.log('new event on', day);
     });
   });
 </script>

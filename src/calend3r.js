@@ -373,7 +373,12 @@ export class Calend3r {
     rows.each((slot, rowIndex, rowNodes) => {
       const row = d3.select(rowNodes[rowIndex]);
       const cells = row.selectAll('div.d3oc-time-cell')
-        .data(days)
+        .data(days.map((day) => {
+          const slotStart = new Date(day);
+          slotStart.setHours(0, 0, 0, 0);
+          slotStart.setMinutes(slot.minutes, 0, 0);
+          return slotStart;
+        }))
         .enter()
         .append('div')
         .attr('class', 'd3oc-time-cell timelineGrid')
@@ -381,8 +386,7 @@ export class Calend3r {
         .attr('data-date', day => toDateKey(day))
         .attr('data-date-key', day => toDateKey(day))
         .attr('data-weekday', day => String(day.getDay()))
-        .classed('d3oc-weekend', day => day.getDay() === 0 || day.getDay() === 6)
-        .attr('data-minutes', slot.minutes);
+        .classed('d3oc-weekend', day => day.getDay() === 0 || day.getDay() === 6);
 
     });
 
